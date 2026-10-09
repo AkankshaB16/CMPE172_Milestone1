@@ -10,7 +10,9 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL,
-    CONSTRAINT chk_user_role CHECK (role IN ('CUSTOMER', 'PROVIDER', 'ADMIN'))
+
+    CONSTRAINT chk_user_role
+        CHECK (role IN ('CUSTOMER', 'PROVIDER', 'ADMIN'))
 );
 
 CREATE TABLE providers (
@@ -19,7 +21,9 @@ CREATE TABLE providers (
     specialization VARCHAR(120) NOT NULL,
     bio VARCHAR(500),
     license_number VARCHAR(80),
-    CONSTRAINT fk_provider_user FOREIGN KEY (user_id) REFERENCES users(user_id)
+
+    CONSTRAINT fk_provider_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE services (
@@ -28,8 +32,12 @@ CREATE TABLE services (
     description VARCHAR(500),
     duration_minutes INT NOT NULL,
     price DECIMAL(10, 2),
-    CONSTRAINT chk_service_duration CHECK (duration_minutes > 0),
-    CONSTRAINT chk_service_price CHECK (price IS NULL OR price >= 0)
+
+    CONSTRAINT chk_service_duration
+        CHECK (duration_minutes > 0),
+
+    CONSTRAINT chk_service_price
+        CHECK (price IS NULL OR price >= 0)
 );
 
 CREATE TABLE availability_slots (
@@ -39,10 +47,21 @@ CREATE TABLE availability_slots (
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE',
-    CONSTRAINT fk_slot_provider FOREIGN KEY (provider_id) REFERENCES providers(provider_id),
-    CONSTRAINT fk_slot_service FOREIGN KEY (service_id) REFERENCES services(service_id),
-    CONSTRAINT chk_slot_time CHECK (end_time > start_time),
-    CONSTRAINT chk_slot_status CHECK (status IN ('AVAILABLE', 'REMOVED'))
+
+    -- Used for optimistic concurrency control
+    version INT NOT NULL DEFAULT 0,
+
+    CONSTRAINT fk_slot_provider
+        FOREIGN KEY (provider_id) REFERENCES providers(provider_id),
+
+    CONSTRAINT fk_slot_service
+        FOREIGN KEY (service_id) REFERENCES services(service_id),
+
+    CONSTRAINT chk_slot_time
+        CHECK (end_time > start_time),
+
+    CONSTRAINT chk_slot_status
+        CHECK (status IN ('AVAILABLE', 'REMOVED'))
 );
 
 CREATE TABLE appointments (
@@ -51,8 +70,17 @@ CREATE TABLE appointments (
     customer_id BIGINT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'BOOKED',
     booked_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_appointment_slot FOREIGN KEY (slot_id) REFERENCES availability_slots(slot_id),
-    CONSTRAINT fk_appointment_customer FOREIGN KEY (customer_id) REFERENCES users(user_id),
-    CONSTRAINT uq_appointment_slot UNIQUE (slot_id),
-    CONSTRAINT chk_appointment_status CHECK (status IN ('BOOKED', 'CANCELLED', 'COMPLETED'))
+
+    CONSTRAINT fk_appointment_slot
+        FOREIGN KEY (slot_id) REFERENCES availability_slots(slot_id),
+
+    CONSTRAINT fk_appointment_customer
+        FOREIGN KEY (customer_id) REFERENCES users(user_id),
+
+    -- Prevents two customers from booking the same slot
+    CONSTRAINT uq_appointment_slot
+        UNIQUE (slot_id),
+
+    CONSTRAINT chk_appointment_status
+        CHECK (status IN ('BOOKED', 'CANCELLED', 'COMPLETED'))
 );
