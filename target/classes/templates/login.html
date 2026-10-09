@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login | CareConnect</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f6f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 400px;
+            margin: 80px auto;
+            background: white;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            color: #123b55;
+            text-align: center;
+        }
+
+        p {
+            color: #555;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-top: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            border: 1px solid #ccd6dd;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 12px;
+            background: #168c86;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #106c68;
+        }
+
+        .error {
+            color: #b42318;
+            font-weight: bold;
+        }
+
+        .demo {
+            background: #eef8f7;
+            padding: 12px;
+            margin-top: 20px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        code {
+            color: #123b55;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>CareConnect</h1>
+
+    <p>Sign in to book or manage appointments.</p>
+
+    <p class="error"
+       th:if="${error}"
+       th:text="${error}">
+    </p>
+
+    <form th:action="@{/login}"
+          th:object="${loginForm}"
+          method="post">
+
+        <label for="email">Email</label>
+
+        <input id="email"
+               type="email"
+               th:field="*{email}"
+               placeholder="ava.patient@example.com"
+               required>
+
+        <label for="password">Password</label>
+
+        <input id="password"
+               type="password"
+               th:field="*{password}"
+               placeholder="password"
+               required>
+
+        <button type="submit">
+            Sign In
+        </button>
+    </form>
+
+    <div class="demo">
+        <strong>Demo accounts</strong><br><br>
+
+        Customer:<br>
+        <code>ava.patient@example.com</code><br><br>
+
+        Provider:<br>
+        <code>maya.chen@example.com</code><br><br>
+
+        Password for all accounts:<br>
+        <code>password</code>
+    </div>
+
+</div>
+
+</body>
+</html>
