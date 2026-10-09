@@ -1,14 +1,20 @@
 package edu.sjsu.cmpe172.careconnect.controller;
 
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 import edu.sjsu.cmpe172.careconnect.dto.SlotForm;
 import edu.sjsu.cmpe172.careconnect.model.UserAccount;
 import edu.sjsu.cmpe172.careconnect.repository.ServiceRepository;
 import edu.sjsu.cmpe172.careconnect.service.BookingService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping("/app")
@@ -180,20 +186,25 @@ public class AppController {
     }
 
     @PostMapping("/provider/slots/{slotId}/remove")
-    public String removeSlot(
-            @PathVariable Long slotId,
-            HttpSession session
-    ) {
-        UserAccount user = requireProvider(session);
+public String removeSlot(
+        @PathVariable Long slotId,
+        HttpSession session
+) {
+    UserAccount user = requireProvider(session);
 
+    try {
         bookingService.removeProviderSlot(
                 user.userId(),
                 slotId
         );
-
-        return "redirect:/app/slots";
+    } catch (IllegalArgumentException exception) {
+        throw new WrongRoleException(
+                "You may only remove your own availability slots"
+        );
     }
 
+    return "redirect:/app/slots";
+}
     private UserAccount currentUser(
             HttpSession session
     ) {
