@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Error | CareConnect</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+
+<main class="card narrow">
+
+    <h1>
+        Error
+        <span th:text="${status}">400</span>
+    </h1>
+
+    <p th:text="${message}">
+        An error occurred.
+    </p>
+
+    <a class="button" href="/app/slots">
+        Return to Available Slots
+    </a>
+
+</main>
+
+</body>
+</html>

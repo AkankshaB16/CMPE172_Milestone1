@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>CareConnect</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<nav>
+    <a href="/app">CareConnect</a>
+    <span>
+        <a href="/app/slots">Available Slots</a>
+        <a href="/login" th:if="${user == null}">Login</a>
+    </span>
+</nav>
+
+<main class="hero">
+    <p class="eyebrow">HEALTHCARE APPOINTMENTS</p>
+
+    <h1>Care that fits your schedule.</h1>
+
+    <p>
+        Find healthcare providers and book clinic appointments
+        in a few simple steps.
+    </p>
+
+    <a class="button" href="/app/slots">
+        View Available Slots
+    </a>
+</main>
+
+</body>
+</html>
