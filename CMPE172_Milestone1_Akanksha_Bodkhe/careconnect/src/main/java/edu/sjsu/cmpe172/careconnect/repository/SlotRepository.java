@@ -5,7 +5,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -45,7 +47,7 @@ public class SlotRepository {
             int page,
             int size
     ) {
-        String sql = """
+        StringBuilder sql = new StringBuilder("""
                 SELECT
                     s.slot_id,
                     u.name AS provider_name,
@@ -69,18 +71,52 @@ public class SlotRepository {
                     WHERE a.slot_id = s.slot_id
                     AND a.status = 'BOOKED'
                 )
-                AND (? IS NULL OR s.provider_id = ?)
-                AND (? IS NULL OR s.service_id = ?)
-                AND (
-                    ? IS NULL
-                    OR CAST(s.start_time AS DATE) = CAST(? AS DATE)
-                )
+                """);
+
+        List<Object> parameters = new ArrayList<>();
+
+        if (providerId != null) {
+            sql.append(" AND s.provider_id = ?");
+            parameters.add(providerId);
+        }
+
+        if (serviceId != null) {
+            sql.append(" AND s.service_id = ?");
+            parameters.add(serviceId);
+        }
+
+        if (date != null && !date.isBlank()) {
+            LocalDate selectedDate = LocalDate.parse(date);
+
+            Timestamp startOfDay =
+                    Timestamp.valueOf(selectedDate.atStartOfDay());
+
+            Timestamp startOfNextDay =
+                    Timestamp.valueOf(selectedDate.plusDays(1).atStartOfDay());
+
+            sql.append("""
+                    AND s.start_time >= ?
+                    AND s.start_time < ?
+                    """);
+
+            parameters.add(startOfDay);
+            parameters.add(startOfNextDay);
+        }
+
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.max(size, 1);
+        int offset = safePage * safeSize;
+
+        sql.append("""
                 ORDER BY s.start_time
                 LIMIT ? OFFSET ?
-                """;
+                """);
+
+        parameters.add(safeSize);
+        parameters.add(offset);
 
         return jdbcTemplate.query(
-                sql,
+                sql.toString(),
                 (resultSet, rowNumber) -> new AvailableSlotDto(
                         resultSet.getLong("slot_id"),
                         resultSet.getString("provider_name"),
@@ -93,14 +129,7 @@ public class SlotRepository {
                         resultSet.getTimestamp("end_time")
                                 .toLocalDateTime()
                 ),
-                providerId,
-                providerId,
-                serviceId,
-                serviceId,
-                date,
-                date,
-                size,
-                page * size
+                parameters.toArray()
         );
     }
 

@@ -34,4 +34,6 @@ src/main/resources/
 ├── static/
 ├── schema.sql
 ├── seed.sql
+milestone2
 └── application.properties
+main
