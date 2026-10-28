@@ -3,31 +3,41 @@ package edu.sjsu.cmpe172.careconnect.service;
 import edu.sjsu.cmpe172.careconnect.dto.AvailableSlotDto;
 import edu.sjsu.cmpe172.careconnect.dto.SlotForm;
 import edu.sjsu.cmpe172.careconnect.model.AppointmentView;
+import edu.sjsu.cmpe172.careconnect.notification.NotificationGateway;
 import edu.sjsu.cmpe172.careconnect.repository.AppointmentRepository;
 import edu.sjsu.cmpe172.careconnect.repository.SlotRepository;
 import edu.sjsu.cmpe172.careconnect.repository.UserRepository;
-import org.springframework.dao.DuplicateKeyException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class BookingService {
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
     private final SlotRepository slotRepository;
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
+    private final BookingTransactionService transactionService;
+    private final NotificationGateway notificationGateway;
+    private final BookingMetrics metrics;
 
     public BookingService(
             SlotRepository slotRepository,
             AppointmentRepository appointmentRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            BookingTransactionService transactionService,
+            NotificationGateway notificationGateway,
+            BookingMetrics metrics
     ) {
         this.slotRepository = slotRepository;
         this.appointmentRepository = appointmentRepository;
         this.userRepository = userRepository;
+        this.transactionService = transactionService;
+        this.notificationGateway = notificationGateway;
+        this.metrics = metrics;
     }
 
     public List<AvailableSlotDto> browse(
@@ -49,60 +59,41 @@ public class BookingService {
         );
     }
 
-    @Transactional
     public void book(Long customerId, Long slotId) {
-
-        Map<String, Object> slot = slotRepository.findSlot(slotId);
-
-        if (slot.isEmpty()) {
-            throw new IllegalArgumentException("Slot not found");
-        }
-
-        int currentVersion =
-                ((Number) slot.get("VERSION")).intValue();
-
-        /*
-         * Optimistic concurrency control:
-         *
-         * The update succeeds only if the slot still has
-         * the same version that we originally read.
-         */
-        int claimed = slotRepository.claimSlotOptimistically(
-                slotId,
-                currentVersion
-        );
-
-        if (claimed != 1) {
-            throw new SlotConflictException(
-                    "This slot was booked by another customer"
-            );
-        }
-
+        long started = System.currentTimeMillis();
         try {
-            appointmentRepository.create(slotId, customerId);
-        } catch (DuplicateKeyException exception) {
-            throw new SlotConflictException(
-                    "This slot was booked by another customer"
-            );
+            var notification = transactionService.book(customerId, slotId);
+            // The transaction has committed before the remote call begins.
+            try {
+                notificationGateway.send(notification);
+            } catch (RuntimeException exception) {
+                // Fallback: retain the committed booking when the remote service is down.
+                log.error("Notification unavailable after booking; fallback accepted: slotId={}",
+                        slotId, exception);
+            }
+            metrics.recordSuccess(System.currentTimeMillis() - started);
+            log.info("Booking committed: customerId={}, slotId={}", customerId, slotId);
+        } catch (RuntimeException exception) {
+            metrics.recordFailure();
+            log.warn("Booking failed: customerId={}, slotId={}", customerId, slotId);
+            throw exception;
         }
     }
 
-    @Transactional
     public void cancel(
             Long customerId,
             Long appointmentId
     ) {
-        int updated = appointmentRepository.cancelOwned(
-                appointmentId,
-                customerId
-        );
-
-        if (updated != 1) {
-            throw new IllegalArgumentException(
-                    "Appointment not found, already completed, " +
-                    "or it does not belong to you"
-            );
+        var notification = transactionService.cancel(customerId, appointmentId);
+        // Cancellation is committed before its confirmation is sent.
+        try {
+            notificationGateway.send(notification);
+        } catch (RuntimeException exception) {
+            log.error("Notification unavailable after cancellation; fallback accepted: appointmentId={}",
+                    appointmentId, exception);
         }
+        log.info("Cancellation committed: customerId={}, appointmentId={}",
+                customerId, appointmentId);
     }
 
     public List<AppointmentView> customerAppointments(

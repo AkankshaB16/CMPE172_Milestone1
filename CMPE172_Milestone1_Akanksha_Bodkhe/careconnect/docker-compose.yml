@@ -1,0 +1,9 @@
+services:
+  careconnect:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      NOTIFICATION_SERVICE_URL: http://localhost:8080/notifications
+      NOTIFICATION_MAX_ATTEMPTS: 3
+      NOTIFICATION_TIMEOUT_MS: 750
