@@ -1,6 +1,8 @@
 package edu.sjsu.cmpe172.careconnect.repository;
 
 import java.util.List;
+import edu.sjsu.cmpe172.careconnect.model.UpcomingAppointment;
+import java.time.LocalDateTime;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -153,4 +155,48 @@ public class AppointmentRepository {
                 customerId
         );
     }
+    public List<UpcomingAppointment> findUpcoming(
+        LocalDateTime from,
+        LocalDateTime until
+) {
+    String sql = """
+            SELECT
+                a.appointment_id,
+                a.customer_id,
+                u.email AS customer_email,
+                u.name AS customer_name,
+                sv.service_name,
+                s.start_time,
+                s.end_time
+            FROM appointments a
+            JOIN users u
+                ON u.user_id = a.customer_id
+            JOIN availability_slots s
+                ON s.slot_id = a.slot_id
+            JOIN services sv
+                ON sv.service_id = s.service_id
+            WHERE a.status = 'BOOKED'
+              AND s.start_time >= ?
+              AND s.start_time < ?
+            ORDER BY s.start_time
+            """;
+
+    return jdbcTemplate.query(
+            sql,
+            (resultSet, rowNumber) ->
+                    new UpcomingAppointment(
+                            resultSet.getLong("appointment_id"),
+                            resultSet.getLong("customer_id"),
+                            resultSet.getString("customer_email"),
+                            resultSet.getString("customer_name"),
+                            resultSet.getString("service_name"),
+                            resultSet.getTimestamp("start_time")
+                                    .toLocalDateTime(),
+                            resultSet.getTimestamp("end_time")
+                                    .toLocalDateTime()
+                    ),
+            from,
+            until
+    );
+}
 }
